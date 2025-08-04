@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef } from "react";
 import { productsData } from "../../data/productsData";
 import aiService from "../../services/aiService";
+import googleSheetsService from "../../services/googleSheetsService";
 
-const Chatbot = () => {
+const Chatbot = ({ setSelectedProduct }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [showWelcomeTooltip, setShowWelcomeTooltip] = useState(false);
   const [messages, setMessages] = useState([
     {
       text: "🌟 **Welcome to Sona Networks!**\n\nI'm your AI-powered assistant, here to help with all your IT infrastructure needs. With 21+ years of excellence, we provide:\n\n🔹 **Network Switches** (1G to 400G)\n🔹 **Security Solutions** (Firewalls, Anti-virus)\n🔹 **Servers & Storage** (HP, Dell, Lenovo)\n🔹 **Optical Transceivers** (SFP, QSFP, DAC)\n🔹 **WiFi Solutions** (Enterprise wireless)\n🔹 **IT Services** (24/7 support, cloud migration)\n\nI can understand your specific requirements and provide personalized recommendations. How can I assist you today? 🚀",
@@ -16,20 +18,126 @@ const Chatbot = () => {
   const [isAIEnabled, setIsAIEnabled] = useState(true);
   const messagesEndRef = useRef(null);
 
+  // Lead capture state
+  const [isLeadCapture, setIsLeadCapture] = useState(false);
+  const [leadStep, setLeadStep] = useState(0);
+  const [leadData, setLeadData] = useState({
+    name: "",
+    company: "",
+    email: "",
+    phone: "",
+    productsInterest: "",
+    budget: "",
+    requirements: "",
+  });
+  const [isSubmittingLead, setIsSubmittingLead] = useState(false);
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
   useEffect(scrollToBottom, [messages]);
 
+  // Auto-show welcome tooltip after 3 seconds
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (!isOpen) {
+        setShowWelcomeTooltip(true);
+        // Hide after 5 seconds
+        setTimeout(() => setShowWelcomeTooltip(false), 5000);
+      }
+    }, 3000);
+
+    return () => clearTimeout(timer);
+  }, [isOpen]);
+
   const quickReplies = [
-    "What network switch do you recommend for my business?",
-    "Tell me about your firewall solutions",
-    "I need a server for my company",
-    "What are your optical transceivers?",
-    "Help me with IT infrastructure planning",
-    "Contact information and pricing",
+    "Network switches",
+    "Firewall solutions",
+    "Server recommendations",
+    "Contact & pricing",
   ];
+
+  // Lead capture keywords and functions
+  const leadCaptureKeywords = [
+    "price",
+    "cost",
+    "how much",
+    "buy",
+    "quotation",
+    "quote",
+    "purchase",
+    "order",
+    "variation",
+    "model",
+    "options",
+    "pricing",
+    "budget",
+    "demo",
+    "contact",
+    "info",
+    "information",
+    "details",
+    "spec",
+    "specification",
+  ];
+
+  const shouldTriggerLeadCapture = (message) => {
+    const msg = message.toLowerCase();
+    return leadCaptureKeywords.some((keyword) => msg.includes(keyword));
+  };
+
+  const getLeadCapturePrompt = (step, previousData = {}) => {
+    const prompts = [
+      {
+        question: "Great! May I know your name to personalize your quote? 😊",
+        field: "name",
+        required: true,
+        validation: (value) =>
+          value.trim().length >= 2 ? null : "Please enter a valid name",
+      },
+      {
+        question:
+          "Nice to meet you! What's your company name? (You can skip this if you prefer)",
+        field: "company",
+        required: false,
+        skipText: "Skip",
+      },
+      {
+        question:
+          "Where can we send your detailed quote and product information? Please share your email or phone number 📧📱",
+        field: "contact",
+        required: true,
+        validation: (value) => {
+          if (googleSheetsService.validateEmail(value)) return null;
+          if (googleSheetsService.validatePhone(value)) return null;
+          return "Please enter a valid email or phone number";
+        },
+      },
+      {
+        question:
+          "Which products are you interested in? (I can suggest based on our conversation)",
+        field: "productsInterest",
+        required: false,
+        placeholder: "Network switches, Firewalls, Servers, etc.",
+      },
+      {
+        question:
+          "Do you have a budget range in mind? This helps us recommend the best options for you 💰",
+        field: "budget",
+        required: false,
+        skipText: "Skip",
+      },
+      {
+        question: "Any specific requirements or questions? (Optional)",
+        field: "requirements",
+        required: false,
+        skipText: "Skip",
+        placeholder: "Port count, brand preference, special features, etc.",
+      },
+    ];
+    return prompts[step] || null;
+  };
 
   const formatProductSpecs = (product) => {
     let specs = `🔹 **${product.name}**\n`;
@@ -58,6 +166,212 @@ const Chatbot = () => {
     return specs;
   };
 
+  // Lead capture functions
+  const startLeadCapture = (context = "") => {
+    setIsLeadCapture(true);
+    setLeadStep(0);
+
+    // Auto-fill products of interest from context
+    if (context) {
+      setLeadData((prev) => ({ ...prev, productsInterest: context }));
+    }
+
+    const prompt = getLeadCapturePrompt(0);
+    const botMessage = {
+      text: `I'd love to help you with personalized recommendations and pricing! 🎯\n\n${prompt.question}`,
+      isBot: true,
+      timestamp: new Date(),
+      isLeadCapture: true,
+      leadStep: 0,
+    };
+    setMessages((prev) => [...prev, botMessage]);
+  };
+
+  const handleLeadCaptureResponse = async (userInput) => {
+    const currentPrompt = getLeadCapturePrompt(leadStep);
+    const currentField = currentPrompt.field;
+
+    // Handle skip
+    if (userInput.toLowerCase().trim() === "skip" && !currentPrompt.required) {
+      advanceLeadStep();
+      return;
+    }
+
+    // Validate required fields
+    if (currentPrompt.required && !userInput.trim()) {
+      const errorMessage = {
+        text: "This information is required to send you a personalized quote. Could you please provide it? 😊",
+        isBot: true,
+        timestamp: new Date(),
+        isLeadCapture: true,
+        isError: true,
+      };
+      setMessages((prev) => [...prev, errorMessage]);
+      return;
+    }
+
+    // Validate input
+    if (currentPrompt.validation) {
+      const validationError = currentPrompt.validation(userInput);
+      if (validationError) {
+        const errorMessage = {
+          text: `${validationError}\n\nCould you please try again? 😊`,
+          isBot: true,
+          timestamp: new Date(),
+          isLeadCapture: true,
+          isError: true,
+        };
+        setMessages((prev) => [...prev, errorMessage]);
+        return;
+      }
+    }
+
+    // Update lead data
+    const updatedLeadData = { ...leadData };
+
+    if (currentField === "contact") {
+      // Determine if it's email or phone
+      if (googleSheetsService.validateEmail(userInput)) {
+        updatedLeadData.email = userInput;
+      } else if (googleSheetsService.validatePhone(userInput)) {
+        updatedLeadData.phone = googleSheetsService.formatPhone(userInput);
+      }
+    } else {
+      updatedLeadData[currentField] = userInput;
+    }
+
+    setLeadData(updatedLeadData);
+
+    // Check if this is the last step
+    const nextStep = leadStep + 1;
+    const nextPrompt = getLeadCapturePrompt(nextStep);
+
+    if (!nextPrompt) {
+      // Complete lead capture
+      await completeLeadCapture(updatedLeadData);
+    } else {
+      // Move to next step
+      setLeadStep(nextStep);
+
+      let confirmationText = "Perfect! ";
+      if (currentField === "name") {
+        confirmationText = `Nice to meet you, ${userInput}! `;
+      }
+
+      const nextMessage = {
+        text: `${confirmationText}${nextPrompt.question}`,
+        isBot: true,
+        timestamp: new Date(),
+        isLeadCapture: true,
+        leadStep: nextStep,
+        showSkip: !nextPrompt.required && nextPrompt.skipText,
+      };
+      setMessages((prev) => [...prev, nextMessage]);
+    }
+  };
+
+  const advanceLeadStep = () => {
+    const nextStep = leadStep + 1;
+    const nextPrompt = getLeadCapturePrompt(nextStep);
+
+    if (!nextPrompt) {
+      completeLeadCapture(leadData);
+    } else {
+      setLeadStep(nextStep);
+      const nextMessage = {
+        text: nextPrompt.question,
+        isBot: true,
+        timestamp: new Date(),
+        isLeadCapture: true,
+        leadStep: nextStep,
+        showSkip: !nextPrompt.required && nextPrompt.skipText,
+      };
+      setMessages((prev) => [...prev, nextMessage]);
+    }
+  };
+
+  const completeLeadCapture = async (finalLeadData) => {
+    setIsSubmittingLead(true);
+
+    // Show saving message
+    const savingMessage = {
+      text: "💾 Saving your information...",
+      isBot: true,
+      timestamp: new Date(),
+      isThinking: true,
+    };
+    setMessages((prev) => [...prev, savingMessage]);
+
+    try {
+      // Save to Google Sheets
+      const result = await googleSheetsService.saveLeadData(finalLeadData);
+
+      // Remove saving message
+      setMessages((prev) => prev.filter((msg) => !msg.isThinking));
+
+      const contactInfo = finalLeadData.email || finalLeadData.phone;
+      const thankYouMessage = {
+        text: `🎉 **Thank you, ${finalLeadData.name}!**\n\nOur team will reach out soon with the best options and pricing for you. You'll receive a detailed quote at **${contactInfo}**.\n\n✅ **What happens next:**\n• Our sales engineer will contact you within 4 hours\n• You'll receive personalized product recommendations\n• We'll provide competitive pricing and technical specifications\n\n🚀 **In the meantime**, feel free to ask me any other questions about our products!`,
+        isBot: true,
+        timestamp: new Date(),
+        isLeadComplete: true,
+      };
+
+      setMessages((prev) => [...prev, thankYouMessage]);
+
+      // Reset lead capture state
+      setIsLeadCapture(false);
+      setLeadStep(0);
+      setLeadData({
+        name: "",
+        company: "",
+        email: "",
+        phone: "",
+        productsInterest: "",
+        budget: "",
+        requirements: "",
+      });
+    } catch (error) {
+      // Remove saving message
+      setMessages((prev) => prev.filter((msg) => !msg.isThinking));
+
+      const errorMessage = {
+        text: "I apologize, but there was a technical issue saving your information. Please contact our team directly at **+91 9618 983 030** or **info@sona-networks.com** and mention that you're interested in a quote. Our team will be happy to help you! 😊",
+        isBot: true,
+        timestamp: new Date(),
+        isError: true,
+      };
+      setMessages((prev) => [...prev, errorMessage]);
+
+      // Reset lead capture state
+      setIsLeadCapture(false);
+      setLeadStep(0);
+    }
+
+    setIsSubmittingLead(false);
+  };
+
+  const extractProductContext = (messages) => {
+    const recentMessages = messages.slice(-5); // Look at last 5 messages
+    const productMentions = [];
+
+    recentMessages.forEach((msg) => {
+      const text = msg.text.toLowerCase();
+      if (text.includes("switch") || text.includes("network"))
+        productMentions.push("Network Switches");
+      if (text.includes("firewall") || text.includes("security"))
+        productMentions.push("Firewalls");
+      if (text.includes("server")) productMentions.push("Servers");
+      if (text.includes("storage")) productMentions.push("Storage Solutions");
+      if (text.includes("wifi") || text.includes("wireless"))
+        productMentions.push("WiFi Solutions");
+      if (text.includes("transceiver") || text.includes("sfp"))
+        productMentions.push("Optical Transceivers");
+    });
+
+    return [...new Set(productMentions)].join(", ");
+  };
+
   const generateAIResponse = async (userMessage) => {
     try {
       setIsTyping(true);
@@ -83,6 +397,7 @@ const Chatbot = () => {
             isBot: true,
             timestamp: new Date(),
             isAI: response.success,
+            showProducts: response.showProducts || [],
           },
         ];
       });
@@ -193,6 +508,34 @@ const Chatbot = () => {
     const userMessage = { text: reply, isBot: false, timestamp: new Date() };
     setMessages((prev) => [...prev, userMessage]);
 
+    // Check if should trigger lead capture for quick replies
+    if (!isLeadCapture && shouldTriggerLeadCapture(reply)) {
+      const productContext = extractProductContext([...messages, userMessage]);
+
+      if (isAIEnabled) {
+        await generateAIResponse(reply);
+      } else {
+        setTimeout(() => {
+          const botResponse = getFallbackResponse(reply);
+          const botMessage = {
+            text: botResponse.text,
+            isBot: true,
+            timestamp: new Date(),
+            showProducts: botResponse.showProducts || [],
+          };
+          setMessages((prev) => [...prev, botMessage]);
+          setIsTyping(false);
+        }, 1000);
+      }
+
+      // Start lead capture after a short delay
+      setTimeout(() => {
+        startLeadCapture(productContext);
+      }, 2000);
+      return;
+    }
+
+    // Normal flow
     if (isAIEnabled) {
       await generateAIResponse(reply);
     } else {
@@ -218,6 +561,41 @@ const Chatbot = () => {
     const currentInput = input;
     setInput("");
 
+    // Handle lead capture flow
+    if (isLeadCapture) {
+      await handleLeadCaptureResponse(currentInput);
+      return;
+    }
+
+    // Check if should trigger lead capture
+    if (!isLeadCapture && shouldTriggerLeadCapture(currentInput)) {
+      const productContext = extractProductContext([...messages, userMessage]);
+
+      if (isAIEnabled) {
+        await generateAIResponse(currentInput);
+      } else {
+        setIsTyping(true);
+        setTimeout(() => {
+          const botResponse = getFallbackResponse(currentInput);
+          const botMessage = {
+            text: botResponse.text,
+            isBot: true,
+            timestamp: new Date(),
+            showProducts: botResponse.showProducts || [],
+          };
+          setMessages((prev) => [...prev, botMessage]);
+          setIsTyping(false);
+        }, 1500);
+      }
+
+      // Start lead capture after a short delay
+      setTimeout(() => {
+        startLeadCapture(productContext);
+      }, 2000);
+      return;
+    }
+
+    // Normal flow
     if (isAIEnabled) {
       await generateAIResponse(currentInput);
     } else {
@@ -244,23 +622,131 @@ const Chatbot = () => {
         timestamp: new Date(),
       },
     ]);
+
+    // Reset lead capture state
+    setIsLeadCapture(false);
+    setLeadStep(0);
+    setLeadData({
+      name: "",
+      company: "",
+      email: "",
+      phone: "",
+      productsInterest: "",
+      budget: "",
+      requirements: "",
+    });
+    setIsSubmittingLead(false);
+
     aiService.clearHistory();
   };
 
   if (!isOpen) {
     return (
-      <button
-        onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 right-6 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white p-4 rounded-full shadow-lg transition-all duration-300 hover:scale-110 z-50"
-      >
-        <i className="fas fa-robot" />
-      </button>
+      <div className="fixed bottom-6 right-6 z-50">
+        {/* Floating Chat Button */}
+        <div className="relative group">
+          {/* Pulsing Ring Animation */}
+          <div className="absolute inset-0 bg-gradient-to-r from-teal-400 to-cyan-500 rounded-full animate-ping opacity-20"></div>
+          <div className="absolute inset-0 bg-gradient-to-r from-teal-400 to-cyan-500 rounded-full animate-pulse opacity-30"></div>
+
+          {/* Notification Badge */}
+          <div className="absolute -top-1 -right-1 bg-gradient-to-r from-orange-400 to-red-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center animate-bounce shadow-lg">
+            <i className="fas fa-exclamation"></i>
+          </div>
+
+          {/* Main Button */}
+          <button
+            onClick={() => setIsOpen(true)}
+            className="relative bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-400 hover:to-cyan-500 text-white p-4 rounded-full shadow-2xl transition-all duration-300 hover:scale-110 hover:shadow-[0_0_30px_rgba(6,182,212,0.6)] group-hover:rotate-12 backdrop-blur-sm border-2 border-white/20"
+          >
+            <i className="fas fa-comments text-xl animate-pulse"></i>
+          </button>
+
+          {/* Tooltip/Speech Bubble */}
+          <div className="absolute bottom-16 right-0 bg-gradient-to-r from-teal-900 to-cyan-900 text-white px-4 py-2 rounded-xl shadow-xl opacity-0 group-hover:opacity-100 transition-all duration-300 transform group-hover:translate-y-0 translate-y-2 pointer-events-none min-w-max border border-teal-500/30 backdrop-blur-lg">
+            <div className="text-sm font-medium">💬 Chat with AI Assistant</div>
+            <div className="text-xs text-teal-300">Get instant IT support!</div>
+            {/* Speech bubble arrow */}
+            <div className="absolute -bottom-1 right-4 w-3 h-3 bg-gradient-to-r from-teal-900 to-cyan-900 rotate-45 border-r border-b border-teal-500/30"></div>
+          </div>
+
+          {/* Welcome Message Popup */}
+          <div
+            className={`absolute bottom-20 right-0 bg-white rounded-xl shadow-2xl p-4 border border-teal-500/20 transition-all duration-500 transform pointer-events-none min-w-max max-w-xs backdrop-blur-lg bg-white/95 ${
+              showWelcomeTooltip
+                ? "opacity-100 translate-y-0"
+                : "opacity-0 translate-y-4 group-hover:opacity-100 group-hover:translate-y-0"
+            }`}
+          >
+            <div className="flex items-start gap-3">
+              <div className="bg-gradient-to-r from-teal-500 to-cyan-600 p-2 rounded-full flex-shrink-0">
+                <i className="fas fa-robot text-white text-sm"></i>
+              </div>
+              <div>
+                <div className="font-semibold text-gray-800 text-sm">
+                  Sona Networks AI
+                </div>
+                <div className="text-xs text-gray-600 mt-1">
+                  Hi! I'm here to help with your IT infrastructure needs. Ask me
+                  anything!
+                </div>
+                <div className="flex items-center gap-1 mt-2 text-xs text-teal-600">
+                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                  <span>Online & Ready</span>
+                </div>
+              </div>
+            </div>
+            {/* Arrow */}
+            <div className="absolute -bottom-1 right-8 w-3 h-3 bg-white rotate-45 border-r border-b border-teal-500/20"></div>
+          </div>
+
+          {/* Floating Icons Animation */}
+          <div className="absolute inset-0 pointer-events-none">
+            <div
+              className="absolute -top-8 -left-2 text-teal-400 opacity-60 animate-bounce text-xs"
+              style={{ animationDelay: "0s" }}
+            >
+              💻
+            </div>
+            <div
+              className="absolute -top-6 -right-8 text-cyan-400 opacity-60 animate-bounce text-xs"
+              style={{ animationDelay: "1s" }}
+            >
+              🔧
+            </div>
+            <div
+              className="absolute -bottom-2 -left-8 text-emerald-400 opacity-60 animate-bounce text-xs"
+              style={{ animationDelay: "2s" }}
+            >
+              🚀
+            </div>
+          </div>
+        </div>
+
+        {/* Entrance Animation Style */}
+        <style jsx>{`
+          @keyframes slideInUp {
+            from {
+              transform: translateY(100px);
+              opacity: 0;
+            }
+            to {
+              transform: translateY(0);
+              opacity: 1;
+            }
+          }
+
+          .fixed {
+            animation: slideInUp 0.8s ease-out;
+          }
+        `}</style>
+      </div>
     );
   }
 
   return (
-    <div className="fixed bottom-6 right-6 w-96 h-[600px] bg-white rounded-2xl shadow-2xl border border-gray-200 flex flex-col z-50 animate-in slide-in-from-bottom-4 duration-300">
-      <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-4 rounded-t-2xl flex justify-between items-center">
+    <div className="fixed bottom-6 right-6 w-96 h-[600px] max-h-[80vh] bg-white rounded-2xl shadow-2xl border border-gray-200 flex flex-col z-50 animate-in slide-in-from-bottom-4 duration-300">
+      <div className="bg-gradient-to-r from-teal-500 to-cyan-600 text-white p-4 rounded-t-2xl flex justify-between items-center shadow-lg">
         <div>
           <h3 className="font-semibold flex items-center gap-2">
             <i className="fas fa-robot" />
@@ -296,7 +782,7 @@ const Chatbot = () => {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 max-h-[40vh]">
         {messages.map((message, index) => (
           <div
             key={index}
@@ -321,10 +807,40 @@ const Chatbot = () => {
                   <span>AI Response</span>
                 </div>
               )}
+              {message.isLeadCapture && (
+                <div className="flex items-center gap-1 text-xs text-green-600 mb-2">
+                  <i className="fas fa-user-plus" />
+                  <span>Lead Capture</span>
+                </div>
+              )}
+              {message.isLeadComplete && (
+                <div className="flex items-center gap-1 text-xs text-green-600 mb-2">
+                  <i className="fas fa-check-circle" />
+                  <span>Registration Complete</span>
+                </div>
+              )}
               <div className="whitespace-pre-line text-sm">{message.text}</div>
+              {message.showSkip && (
+                <div className="mt-2">
+                  <button
+                    onClick={() => {
+                      const skipMessage = {
+                        text: "skip",
+                        isBot: false,
+                        timestamp: new Date(),
+                      };
+                      setMessages((prev) => [...prev, skipMessage]);
+                      advanceLeadStep();
+                    }}
+                    className="px-3 py-1 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-full text-xs transition-colors"
+                  >
+                    Skip
+                  </button>
+                </div>
+              )}
               {message.showProducts && (
                 <div className="mt-3 space-y-2">
-                  {message.showProducts.map((productId) => {
+                  {message.showProducts.slice(0, 3).map((productId) => {
                     const product = Object.values(productsData)
                       .flat()
                       .find((p) => p.id === productId);
@@ -332,26 +848,50 @@ const Chatbot = () => {
                     return (
                       <div
                         key={productId}
-                        className="bg-white p-3 rounded-lg border shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+                        className="bg-white p-3 rounded-lg border shadow-sm hover:shadow-md transition-all cursor-pointer group hover:border-blue-300"
+                        onClick={() =>
+                          setSelectedProduct && setSelectedProduct(product)
+                        }
                       >
                         <div className="flex items-center space-x-3">
-                          <img
-                            src={product.image}
-                            alt={product.name}
-                            className="w-12 h-12 object-cover rounded"
-                          />
-                          <div>
-                            <h4 className="font-medium text-gray-900">
+                          <div className="relative">
+                            <img
+                              src={product.image}
+                              alt={product.name}
+                              className="w-16 h-16 object-cover rounded-lg group-hover:scale-105 transition-transform"
+                            />
+                            <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 rounded-lg transition-all flex items-center justify-center">
+                              <i className="fas fa-search text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                            </div>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-medium text-gray-900 group-hover:text-blue-600 transition-colors">
                               {product.name}
                             </h4>
-                            <p className="text-sm text-gray-600">
+                            <p className="text-sm text-gray-600 truncate">
+                              {product.description}
+                            </p>
+                            <p className="text-sm font-medium text-blue-600">
                               {product.price_range}
+                            </p>
+                            <p className="text-xs text-gray-500 mt-1">
+                              Click for details →
                             </p>
                           </div>
                         </div>
                       </div>
                     );
                   })}
+                  {message.showProducts.length > 3 && (
+                    <div className="text-center">
+                      <button
+                        className="text-blue-600 text-sm hover:text-blue-700 font-medium"
+                        onClick={() => handleQuickReply("Show more products")}
+                      >
+                        View {message.showProducts.length - 3} more products →
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -381,21 +921,26 @@ const Chatbot = () => {
         <div ref={messagesEndRef} />
       </div>
 
-      <div className="p-3 border-t border-gray-200">
-        <div className="flex flex-wrap gap-2 mb-3">
-          {quickReplies.map((reply, index) => (
-            <button
-              key={index}
-              onClick={() => handleQuickReply(reply)}
-              className="px-3 py-1 bg-gradient-to-r from-blue-50 to-purple-50 hover:from-blue-100 hover:to-purple-100 text-blue-700 rounded-full text-xs transition-colors border border-blue-200"
-            >
-              {reply}
-            </button>
-          ))}
+      {messages.length <= 1 && (
+        <div className="p-3 border-t border-gray-200 flex-shrink-0">
+          <div className="text-xs text-gray-500 mb-2 text-center">
+            Quick suggestions:
+          </div>
+          <div className="flex flex-wrap gap-2 justify-center">
+            {quickReplies.map((reply, index) => (
+              <button
+                key={index}
+                onClick={() => handleQuickReply(reply)}
+                className="px-3 py-1.5 bg-gradient-to-r from-teal-50 to-cyan-50 hover:from-teal-100 hover:to-cyan-100 text-teal-700 rounded-full text-xs transition-colors border border-teal-200 font-medium hover:shadow-md"
+              >
+                {reply}
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
-      <div className="p-4 border-t border-gray-200">
+      <div className="p-4 border-t border-gray-200 flex-shrink-0">
         <div className="flex space-x-2">
           <input
             type="text"
@@ -403,23 +948,30 @@ const Chatbot = () => {
             onChange={(e) => setInput(e.target.value)}
             onKeyPress={(e) => e.key === "Enter" && handleSend()}
             placeholder={
-              isAIEnabled
+              isLeadCapture
+                ? "Enter your response..."
+                : isAIEnabled
                 ? "Ask me anything about IT infrastructure..."
                 : "Ask about network switches, firewalls, servers..."
             }
-            className="flex-1 border border-gray-300 rounded-full px-4 py-2 text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+            className="flex-1 border border-gray-300 rounded-full px-4 py-2 text-sm focus:outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-100 transition-all duration-200"
             disabled={isTyping}
           />
           <button
             onClick={handleSend}
             disabled={isTyping || !input.trim()}
-            className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:from-gray-400 disabled:to-gray-400 text-white p-2 rounded-full transition-all duration-200"
+            className="bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-400 hover:to-cyan-500 disabled:from-gray-400 disabled:to-gray-400 text-white p-2 rounded-full transition-all duration-200 hover:shadow-[0_0_15px_rgba(6,182,212,0.4)]"
           >
             <i className="fas fa-paper-plane" />
           </button>
         </div>
         <div className="text-xs text-gray-500 mt-2 text-center">
-          {isAIEnabled ? (
+          {isLeadCapture ? (
+            <span className="flex items-center justify-center gap-1">
+              <i className="fas fa-user-plus text-green-500" />
+              Lead capture in progress ({leadStep + 1}/6)
+            </span>
+          ) : isAIEnabled ? (
             <span className="flex items-center justify-center gap-1">
               <i className="fas fa-robot text-blue-500" />
               AI-powered responses enabled

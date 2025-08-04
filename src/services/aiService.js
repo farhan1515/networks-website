@@ -142,9 +142,13 @@ class AIService {
         content: aiResponse,
       });
 
+      // Extract product recommendations from AI response
+      const productMentions = this.extractProductIds(aiResponse);
+
       return {
         text: aiResponse,
         success: true,
+        showProducts: productMentions,
       };
     } catch (error) {
       console.error("OpenAI API Error:", error);
@@ -183,6 +187,66 @@ class AIService {
 
   getConversationContext() {
     return this.conversationHistory;
+  }
+
+  extractProductIds(response) {
+    const productIds = [];
+    const text = response.toLowerCase();
+
+    // Map of product mentions to IDs
+    const productMap = {
+      "ss5720-8h": "ss5720_8h",
+      "ss5720-8x": "ss5720_8x",
+      "ss5720-12m2h2x": "ss5720_12m2h2x",
+      "s5863-24h2qc": "s5863_24h2qc",
+      "ss5863-24x2c": "ss5863_24x2c",
+      "ss5720-24m6x": "ss5720_24m6x",
+      "ss5710-28sx": "ss5710_28sx",
+      "ss5860-48m4x2q": "ss5860_48m4x2q",
+      "ss6650-48sx6qc": "ss6650_48sx6qc",
+      "ss5710-52tp": "ss5710_52tp",
+      "sonicwall-270": "sonicwal_270",
+      "sonicwall-350": "sonicwal_350",
+      "sonicwall-670": "sonicwal_670",
+      fortinet: "fortinet",
+      cisco: "cisco",
+      sophos: "sophos",
+      hpe: "hpe_server",
+      dell: "dell",
+      lenovo: "lenova",
+      dac: "dac_cable",
+      unifi: "unifi_wifi",
+    };
+
+    // Check for specific product mentions
+    Object.entries(productMap).forEach(([mention, id]) => {
+      if (text.includes(mention) || text.includes(mention.replace("-", ""))) {
+        productIds.push(id);
+      }
+    });
+
+    // If switches mentioned but no specific model, show popular switches
+    if (
+      (text.includes("switch") || text.includes("network")) &&
+      productIds.length === 0
+    ) {
+      productIds.push("ss5720_8h", "ss5720_24m6x", "ss5710_52tp");
+    }
+
+    // If firewalls mentioned but no specific model, show popular firewalls
+    if (
+      (text.includes("firewall") || text.includes("security")) &&
+      productIds.length === 0
+    ) {
+      productIds.push("sonicwal_350", "fortinet", "sophos");
+    }
+
+    // If servers mentioned but no specific brand, show all servers
+    if (text.includes("server") && productIds.length === 0) {
+      productIds.push("hpe_server", "dell", "lenova");
+    }
+
+    return [...new Set(productIds)]; // Remove duplicates
   }
 }
 

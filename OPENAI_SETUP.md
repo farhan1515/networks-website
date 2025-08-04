@@ -50,6 +50,8 @@ Create a `.env` file in your project root:
 VITE_OPENAI_API_KEY=sk-your-actual-api-key-here
 ```
 
+**Note:** The chatbot will work in fallback mode without an API key, but you'll get much better results with OpenAI integration.
+
 ### Step 3: Install Dependencies (Already Done)
 
 ```bash

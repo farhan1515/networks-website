@@ -19,7 +19,7 @@ export const productsData = {
       ],
       price_range: "Contact for pricing",
       image:
-        "https://images.unsplash.com/photo-1544197150-b99a580bb7a8?w=600&h=400&fit=crop",
+        "https://sonanetworks.in/assets/img/portfolio/network/SS5720-8H.jpg",
     },
     {
       id: "ss5720_8x",
@@ -40,7 +40,7 @@ export const productsData = {
       ],
       price_range: "Contact for pricing",
       image:
-        "https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=600&h=400&fit=crop",
+        "https://sonanetworks.in/assets/img/portfolio/network/SS5720-8X.jpg",
     },
     {
       id: "ss5720_12m2h2x",
@@ -65,7 +65,7 @@ export const productsData = {
       ],
       price_range: "Contact for pricing",
       image:
-        "https://images.unsplash.com/photo-1518432031352-d6fc5c10da5a?w=600&h=400&fit=crop",
+        "https://sonanetworks.in/assets/img/portfolio/network/SS5720-12M2H2X.jpg",
     },
     {
       id: "ss5863_24h2qc",
@@ -86,7 +86,7 @@ export const productsData = {
       ],
       price_range: "Contact for pricing",
       image:
-        "https://images.unsplash.com/photo-1544197150-b99a580bb7a8?w=600&h=400&fit=crop",
+        "https://sonanetworks.in/assets/img/portfolio/network/S5863-24H2QC.jpg",
     },
     {
       id: "ss5863_24x2c",
@@ -111,7 +111,7 @@ export const productsData = {
       ],
       price_range: "Contact for pricing",
       image:
-        "https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=600&h=400&fit=crop",
+        "https://sonanetworks.in/assets/img/portfolio/network/SS5863-24X2C.jpg",
     },
     {
       id: "ss5720_24m6x",
@@ -133,7 +133,7 @@ export const productsData = {
       ],
       price_range: "Contact for pricing",
       image:
-        "https://images.unsplash.com/photo-1518432031352-d6fc5c10da5a?w=600&h=400&fit=crop",
+        "https://sonanetworks.in/assets/img/portfolio/network/SS5720-24M6X.jpg",
     },
     {
       id: "ss5710_28sx",
@@ -231,7 +231,7 @@ export const productsData = {
       applications: ["Small business", "Branch office", "Remote access"],
       price_range: "Contact for pricing",
       image:
-        "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=600&h=400&fit=crop",
+        "https://sonanetworks.in/assets/img/portfolio/firewall/firewall1-350.jpg",
     },
     {
       id: "sonicwall_350",
@@ -250,7 +250,7 @@ export const productsData = {
       ],
       price_range: "Contact for pricing",
       image:
-        "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=600&h=400&fit=crop",
+        "https://sonanetworks.in/assets/img/portfolio/firewall/firewall12.png",
     },
     {
       id: "sonicwall_670",
@@ -269,7 +269,7 @@ export const productsData = {
       ],
       price_range: "Contact for pricing",
       image:
-        "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=600&h=400&fit=crop",
+        "https://sonanetworks.in/assets/img/portfolio/firewall/firewall12.png",
     },
     {
       id: "fortinet_firewall",
@@ -288,7 +288,7 @@ export const productsData = {
       ],
       price_range: "Contact for pricing",
       image:
-        "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=600&h=400&fit=crop",
+        "https://sonanetworks.in/assets/img/portfolio/firewall/firewall9%20F.jpg",
     },
     {
       id: "cisco_firewall",
@@ -307,7 +307,7 @@ export const productsData = {
       ],
       price_range: "Contact for pricing",
       image:
-        "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=600&h=400&fit=crop",
+        "https://sonanetworks.in/assets/img/portfolio/firewall/firewall9%20F.jpg",
     },
     {
       id: "sophos_firewall",
@@ -326,7 +326,7 @@ export const productsData = {
       ],
       price_range: "Contact for pricing",
       image:
-        "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=600&h=400&fit=crop",
+        "https://sonanetworks.in/assets/img/portfolio/firewall/firewall9%20F.jpg",
     },
   ],
   servers: [
@@ -346,8 +346,7 @@ export const productsData = {
         "Enterprise applications",
       ],
       price_range: "Contact for pricing",
-      image:
-        "https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=600&h=400&fit=crop",
+      image: "https://sonanetworks.in/assets/img/portfolio/server/server1.jpg",
     },
     {
       id: "dell_server",
@@ -361,8 +360,7 @@ export const productsData = {
       ],
       applications: ["Cloud computing", "HPC", "Database systems"],
       price_range: "Contact for pricing",
-      image:
-        "https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=600&h=400&fit=crop",
+      image: "https://sonanetworks.in/assets/img/portfolio/server/server3.png",
     },
     {
       id: "lenovo_server",
@@ -376,8 +374,7 @@ export const productsData = {
       ],
       applications: ["SMB solutions", "Edge computing", "General purpose"],
       price_range: "Contact for pricing",
-      image:
-        "https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=600&h=400&fit=crop",
+      image: "https://sonanetworks.in/assets/img/portfolio/server/server2.jpg",
     },
     {
       id: "server_cabinet",
@@ -459,7 +456,7 @@ export const productsData = {
       ],
       price_range: "Contact for pricing",
       image:
-        "https://images.unsplash.com/photo-1518432031352-d6fc5c10da5a?w=600&h=400&fit=crop",
+        "https://sonanetworks.in/assets/img/portfolio/general/dac%20cable1.jpg",
     },
   ],
   wireless: [
