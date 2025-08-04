@@ -46,9 +46,21 @@ Servers & Infrastructure:
 - Server Cabinets: 19-inch rack mount solutions
 
 Storage Solutions:
-- SAN Storage: Storage Area Network for enterprise backup
-- NAS Device: Network Attached Storage for file sharing
-- SAN Drives: High-speed enterprise storage drives
+- SAN Storage: Storage Area Network for enterprise backup, data centers, high-performance applications
+  • Best for: 500+ employees, data centers, database servers, mission-critical applications
+  • Features: High availability, scalable capacity, enterprise-grade performance
+- NAS Device: Network Attached Storage for file sharing and backup
+  • Best for: 50-500 employees, file servers, media storage, departmental backup
+  • Features: Easy file sharing, RAID support, cost-effective backup solutions  
+- SAN Drives: High-speed enterprise storage drives for SAN systems
+  • Best for: Database storage, high-performance applications, enterprise SAN expansion
+  • Features: Enterprise-grade reliability, multiple capacities, high-speed performance
+
+STORAGE RECOMMENDATIONS BY COMPANY SIZE:
+- Small (10-50 employees): NAS Device for file sharing and basic backup
+- Medium (50-500 employees): NAS Device + SAN Drives for growing storage needs
+- Large (500-2000 employees): SAN Storage + SAN Drives for enterprise-grade storage
+- Enterprise (2000+ employees): Full SAN Storage solution with multiple SAN Drives for high availability
 
 Transceivers & Connectivity:
 - DAC Cables: Direct Attach Copper for cost-effective connectivity
@@ -70,10 +82,18 @@ SERVICES:
 
 CONSULTATION APPROACH:
 1. Ask about business size, industry, and current setup
-2. Understand specific requirements (port count, PoE needs, speeds, budget)
-3. Recommend appropriate solutions with technical justification
-4. Provide next steps and connect with sales team
+2. Understand specific requirements:
+   - For Networks: port count, PoE needs, speeds, budget
+   - For Storage: company size, data volume, backup needs, performance requirements
+   - For Security: current threats, compliance needs, network size
+3. Recommend appropriate solutions with technical justification based on company size:
+   - 10-50 employees: Basic/entry-level solutions
+   - 50-500 employees: Mid-range/business solutions  
+   - 500-2000 employees: Enterprise-grade solutions
+   - 2000+ employees: High-end enterprise/data center solutions
+4. Provide specific product recommendations with images
 5. Always be helpful, professional, and technically accurate
+6. Connect with sales team for pricing and implementation
 
 PRICING GUIDANCE:
 - All products are "Contact for pricing" - connect customers with sales team
@@ -205,17 +225,27 @@ class AIService {
       "ss5860-48m4x2q": "ss5860_48m4x2q",
       "ss6650-48sx6qc": "ss6650_48sx6qc",
       "ss5710-52tp": "ss5710_52tp",
-      "sonicwall-270": "sonicwal_270",
-      "sonicwall-350": "sonicwal_350",
-      "sonicwall-670": "sonicwal_670",
-      fortinet: "fortinet",
-      cisco: "cisco",
-      sophos: "sophos",
+      "sonicwall-270": "sonicwall_270",
+      "sonicwall-350": "sonicwall_350",
+      "sonicwall-670": "sonicwall_670",
+      fortinet: "fortinet_firewall",
+      cisco: "cisco_firewall",
+      sophos: "sophos_firewall",
       hpe: "hpe_server",
       dell: "dell",
       lenovo: "lenova",
       dac: "dac_cable",
       unifi: "unifi_wifi",
+      // Storage products
+      "san storage": "san_storage",
+      san: "san_storage",
+      "storage area network": "san_storage",
+      "nas device": "nas_device",
+      nas: "nas_device",
+      "network attached storage": "nas_device",
+      "san drive": "san_drive",
+      "storage drive": "san_drive",
+      "enterprise storage": "san_storage",
     };
 
     // Check for specific product mentions
@@ -238,12 +268,42 @@ class AIService {
       (text.includes("firewall") || text.includes("security")) &&
       productIds.length === 0
     ) {
-      productIds.push("sonicwal_350", "fortinet", "sophos");
+      productIds.push("sonicwall_350", "fortinet_firewall", "sophos_firewall");
     }
 
     // If servers mentioned but no specific brand, show all servers
     if (text.includes("server") && productIds.length === 0) {
       productIds.push("hpe_server", "dell", "lenova");
+    }
+
+    // If storage mentioned but no specific type, show storage solutions
+    if (
+      (text.includes("storage") ||
+        text.includes("backup") ||
+        text.includes("data center") ||
+        text.includes("file sharing") ||
+        text.includes("database")) &&
+      productIds.filter((id) =>
+        ["san_storage", "nas_device", "san_drive"].includes(id)
+      ).length === 0
+    ) {
+      // Recommend based on context
+      if (
+        text.includes("enterprise") ||
+        text.includes("data center") ||
+        text.includes("database")
+      ) {
+        productIds.push("san_storage", "san_drive");
+      } else if (
+        text.includes("file sharing") ||
+        text.includes("media") ||
+        text.includes("backup")
+      ) {
+        productIds.push("nas_device");
+      } else {
+        // Show all storage options
+        productIds.push("san_storage", "nas_device", "san_drive");
+      }
     }
 
     return [...new Set(productIds)]; // Remove duplicates

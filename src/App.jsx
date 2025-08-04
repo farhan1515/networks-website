@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import Navigation from "./components/common/Navigation";
-import Chatbot from "./components/chatbot/Chatbot";
+import ChatbotLazy from "./components/chatbot/ChatbotLazy";
+import usePerformanceMonitor from "./hooks/usePerformanceMonitor";
 import Home from "./pages/Home";
 import Products from "./pages/Products";
 import Services from "./pages/Services";
@@ -10,6 +11,9 @@ import Contact from "./pages/Contact";
 const App = () => {
   const [currentPage, setCurrentPage] = useState("home");
   const [selectedProduct, setSelectedProduct] = useState(null);
+
+  // Monitor performance metrics
+  const performanceMetrics = usePerformanceMonitor();
 
   const renderCurrentPage = () => {
     switch (currentPage) {
@@ -118,7 +122,7 @@ const App = () => {
           </div>
         </div>
       </footer>
-      <Chatbot setSelectedProduct={setSelectedProduct} />
+      <ChatbotLazy setSelectedProduct={setSelectedProduct} />
       {selectedProduct && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="backdrop-blur-lg bg-gray-900/90 border border-teal-500/30 rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">

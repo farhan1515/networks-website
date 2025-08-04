@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { productsData } from "../../data/productsData";
 import aiService from "../../services/aiService";
 import googleSheetsService from "../../services/googleSheetsService";
+import LazyImage from "../common/LazyImage";
 
 const Chatbot = ({ setSelectedProduct }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -362,7 +363,14 @@ const Chatbot = ({ setSelectedProduct }) => {
       if (text.includes("firewall") || text.includes("security"))
         productMentions.push("Firewalls");
       if (text.includes("server")) productMentions.push("Servers");
-      if (text.includes("storage")) productMentions.push("Storage Solutions");
+      if (
+        text.includes("storage") ||
+        text.includes("san") ||
+        text.includes("nas") ||
+        text.includes("backup") ||
+        text.includes("file sharing")
+      )
+        productMentions.push("Storage Solutions");
       if (text.includes("wifi") || text.includes("wireless"))
         productMentions.push("WiFi Solutions");
       if (text.includes("transceiver") || text.includes("sfp"))
@@ -427,19 +435,214 @@ const Chatbot = ({ setSelectedProduct }) => {
   const getFallbackResponse = (userMessage) => {
     const msg = userMessage.toLowerCase();
 
-    // Storage Solutions
-    if (msg.includes("storage") || msg.includes("san") || msg.includes("nas")) {
+    // Storage Solutions with company size recommendations
+    if (
+      msg.includes("storage") ||
+      msg.includes("san") ||
+      msg.includes("nas") ||
+      msg.includes("backup") ||
+      msg.includes("file sharing")
+    ) {
       const storageProducts = productsData.storage;
-      let response = "**Available Storage Solutions:**\n\n";
-      storageProducts.forEach((product) => {
+      let response = "**Storage Solutions Based on Your Needs:**\n\n";
+
+      // Extract company size if mentioned
+      let recommendedProducts = [];
+      let companySize = "";
+
+      if (msg.includes("2000") && msg.includes("employee")) {
+        companySize = "2000+ employees (Enterprise)";
+        response += `🏢 **For ${companySize}:**\n`;
+        response +=
+          "I recommend **SAN Storage** + **SAN Drives** for enterprise-grade performance:\n\n";
+        recommendedProducts = storageProducts.filter(
+          (p) => p.id === "san_storage" || p.id === "san_drive"
+        );
+      } else if (
+        msg.includes("1000") ||
+        msg.includes("1500") ||
+        (msg.includes("large") && msg.includes("company"))
+      ) {
+        companySize = "500-2000 employees (Large Enterprise)";
+        response += `🏢 **For ${companySize}:**\n`;
+        response +=
+          "I recommend **SAN Storage** for enterprise backup and performance:\n\n";
+        recommendedProducts = storageProducts.filter(
+          (p) => p.id === "san_storage" || p.id === "san_drive"
+        );
+      } else if (
+        msg.includes("500") ||
+        msg.includes("medium") ||
+        msg.includes("growing")
+      ) {
+        companySize = "50-500 employees (Medium Business)";
+        response += `🏢 **For ${companySize}:**\n`;
+        response +=
+          "I recommend **NAS Device** for file sharing and backup:\n\n";
+        recommendedProducts = storageProducts.filter(
+          (p) => p.id === "nas_device"
+        );
+      } else if (
+        msg.includes("small") ||
+        msg.includes("startup") ||
+        (msg.match(/\b\d{1,2}\b/) && parseInt(msg.match(/\b\d{1,2}\b/)[0]) < 50)
+      ) {
+        companySize = "10-50 employees (Small Business)";
+        response += `🏢 **For ${companySize}:**\n`;
+        response +=
+          "I recommend **NAS Device** for basic file sharing and backup:\n\n";
+        recommendedProducts = storageProducts.filter(
+          (p) => p.id === "nas_device"
+        );
+      } else {
+        response += "Here are all our available storage solutions:\n\n";
+        recommendedProducts = storageProducts;
+      }
+
+      recommendedProducts.forEach((product) => {
         response += formatProductSpecs(product);
       });
-      response +=
-        "\n💡 **Key Benefits:**\n• High-capacity enterprise storage\n• Data protection and backup\n• Scalable architecture\n\n📞 Contact us for detailed specifications and pricing!";
+
+      if (companySize) {
+        response += `\n💡 **Why this is perfect for ${companySize}:**\n`;
+        if (
+          companySize.includes("Enterprise") ||
+          companySize.includes("Large")
+        ) {
+          response +=
+            "• High availability and scalability for mission-critical data\n";
+          response += "• Enterprise-grade performance for database storage\n";
+          response += "• Redundancy and backup capabilities\n";
+        } else if (companySize.includes("Medium")) {
+          response += "• Cost-effective file sharing and backup\n";
+          response += "• RAID support for data protection\n";
+          response += "• Easy to manage and expand\n";
+        } else {
+          response += "• Simple setup and management\n";
+          response += "• Affordable backup solution\n";
+          response += "• Perfect for small team file sharing\n";
+        }
+      }
+
+      response += "\n📞 Contact us for detailed specifications and pricing!";
 
       return {
         text: response,
-        showProducts: storageProducts.map((p) => p.id),
+        showProducts: recommendedProducts.map((p) => p.id),
+      };
+    }
+
+    // Firewall Solutions
+    if (
+      msg.includes("firewall") ||
+      msg.includes("security") ||
+      msg.includes("sonicwall") ||
+      msg.includes("fortinet") ||
+      msg.includes("cisco") ||
+      msg.includes("sophos")
+    ) {
+      const firewallProducts = productsData.firewalls;
+      let response = "**Network Security & Firewall Solutions:**\n\n";
+
+      // Determine company size or specific firewall needs
+      let recommendedProducts = [];
+      let companySize = "";
+
+      if (
+        msg.includes("enterprise") ||
+        msg.includes("large") ||
+        msg.includes("1000")
+      ) {
+        companySize = "Enterprise (500+ employees)";
+        response += `🏢 **For ${companySize}:**\n`;
+        response +=
+          "I recommend **Enterprise-grade Firewalls** for maximum protection:\n\n";
+        recommendedProducts = firewallProducts.filter(
+          (p) =>
+            p.id === "sonicwall_670" ||
+            p.id === "fortinet_firewall" ||
+            p.id === "cisco_firewall"
+        );
+      } else if (
+        msg.includes("medium") ||
+        msg.includes("500") ||
+        msg.includes("growing")
+      ) {
+        companySize = "Medium Business (50-500 employees)";
+        response += `🏢 **For ${companySize}:**\n`;
+        response +=
+          "I recommend **Mid-range Firewalls** for balanced security and cost:\n\n";
+        recommendedProducts = firewallProducts.filter(
+          (p) => p.id === "sonicwall_350" || p.id === "sophos_firewall"
+        );
+      } else if (
+        msg.includes("small") ||
+        msg.includes("startup") ||
+        msg.includes("50")
+      ) {
+        companySize = "Small Business (10-50 employees)";
+        response += `🏢 **For ${companySize}:**\n`;
+        response +=
+          "I recommend **Compact Firewalls** perfect for small businesses:\n\n";
+        recommendedProducts = firewallProducts.filter(
+          (p) => p.id === "sonicwall_270" || p.id === "sophos_firewall"
+        );
+      } else if (msg.includes("sonicwall")) {
+        response += "**SonicWall Series - Industry Leading Protection:**\n\n";
+        recommendedProducts = firewallProducts.filter(
+          (p) => p.brand === "SonicWall"
+        );
+      } else if (msg.includes("fortinet")) {
+        response += "**Fortinet FortiGate - AI-Powered Security:**\n\n";
+        recommendedProducts = firewallProducts.filter(
+          (p) => p.brand === "Fortinet"
+        );
+      } else if (msg.includes("cisco")) {
+        response += "**Cisco ASA Series - Enterprise Security:**\n\n";
+        recommendedProducts = firewallProducts.filter(
+          (p) => p.brand === "Cisco"
+        );
+      } else if (msg.includes("sophos")) {
+        response += "**Sophos Unified Threat Management:**\n\n";
+        recommendedProducts = firewallProducts.filter(
+          (p) => p.brand === "Sophos"
+        );
+      } else {
+        response += "Here are our top firewall solutions by brand:\n\n";
+        recommendedProducts = firewallProducts.slice(0, 4); // Show top 4 firewalls
+      }
+
+      recommendedProducts.forEach((product) => {
+        response += formatProductSpecs(product);
+      });
+
+      if (companySize) {
+        response += `\n🛡️ **Why this is perfect for ${companySize}:**\n`;
+        if (companySize.includes("Enterprise")) {
+          response +=
+            "• Advanced threat protection with AI-powered detection\n";
+          response += "• High throughput for large network traffic\n";
+          response += "• Centralized management and reporting\n";
+          response += "• 24/7 enterprise support\n";
+        } else if (companySize.includes("Medium")) {
+          response += "• Balanced performance and cost-effectiveness\n";
+          response += "• Scalable for business growth\n";
+          response += "• Easy management interface\n";
+          response += "• Comprehensive threat protection\n";
+        } else {
+          response += "• Simple setup and management\n";
+          response += "• Affordable enterprise-grade security\n";
+          response += "• Perfect for small office networks\n";
+          response += "• Essential threat protection\n";
+        }
+      }
+
+      response +=
+        "\n🛡️ **All Firewalls Include:**\n• Intrusion Prevention System (IPS)\n• Application Control\n• VPN Support\n• Real-time Threat Intelligence\n\n📞 Contact us for security assessment and pricing!";
+
+      return {
+        text: response,
+        showProducts: recommendedProducts.map((p) => p.id),
       };
     }
 
@@ -855,10 +1058,11 @@ const Chatbot = ({ setSelectedProduct }) => {
                       >
                         <div className="flex items-center space-x-3">
                           <div className="relative">
-                            <img
+                            <LazyImage
                               src={product.image}
                               alt={product.name}
-                              className="w-16 h-16 object-cover rounded-lg group-hover:scale-105 transition-transform"
+                              className="w-16 h-16 rounded-lg group-hover:scale-105 transition-transform"
+                              placeholder="data:image/svg+xml,%3Csvg width='64' height='64' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='100%25' height='100%25' fill='%23E5E7EB'/%3E%3Ctext x='50%25' y='50%25' font-size='10' text-anchor='middle' dy='.3em' fill='%236B7280'%3E...%3C/text%3E%3C/svg%3E"
                             />
                             <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 rounded-lg transition-all flex items-center justify-center">
                               <i className="fas fa-search text-white opacity-0 group-hover:opacity-100 transition-opacity" />

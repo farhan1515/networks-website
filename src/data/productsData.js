@@ -395,48 +395,74 @@ export const productsData = {
     {
       id: "san_storage",
       name: "SAN Storage",
+      description:
+        "Enterprise Storage Area Network for high-performance data centers and mission-critical applications",
       category: "Storage Solutions",
       features: [
         "Storage Area Network",
         "High availability",
         "Scalable capacity",
+        "Enterprise-grade reliability",
+        "Fiber Channel connectivity",
       ],
       applications: [
         "Data centers",
         "Enterprise backup",
         "High-performance storage",
+        "Database servers",
+        "Virtualization environments",
       ],
       price_range: "Contact for pricing",
       image:
-        "https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=600&h=400&fit=crop",
+        "https://images.unsplash.com/photo-1558618666-e97db8ee2d39?w=600&h=400&fit=crop",
     },
     {
       id: "nas_device",
       name: "NAS Device",
+      description:
+        "Network Attached Storage device for efficient file sharing, backup, and media storage solutions",
       category: "Storage Solutions",
-      features: ["Network Attached Storage", "File sharing", "RAID support"],
-      applications: ["File servers", "Backup solutions", "Media storage"],
+      features: [
+        "Network Attached Storage",
+        "File sharing",
+        "RAID support",
+        "Remote access",
+        "Automated backup",
+      ],
+      applications: [
+        "File servers",
+        "Backup solutions",
+        "Media storage",
+        "Small to medium businesses",
+        "Home office setups",
+      ],
       price_range: "Contact for pricing",
       image:
-        "https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=600&h=400&fit=crop",
+        "https://www.sonanetworks.in/assets/img/portfolio/storage/nas4.jpg",
     },
     {
       id: "san_drive",
       name: "SAN Drive",
+      description:
+        "High-performance enterprise storage drives designed for SAN systems and demanding applications",
       category: "Storage Solutions",
       features: [
         "High-speed drives",
         "Enterprise-grade",
         "Multiple capacities",
+        "Hot-swappable",
+        "24/7 operation",
       ],
       applications: [
         "SAN systems",
         "High-performance storage",
         "Database storage",
+        "Enterprise servers",
+        "Critical data applications",
       ],
       price_range: "Contact for pricing",
       image:
-        "https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=600&h=400&fit=crop",
+        "https://www.sonanetworks.in/assets/img/portfolio/storage/nas2.png",
     },
   ],
   transceivers: [

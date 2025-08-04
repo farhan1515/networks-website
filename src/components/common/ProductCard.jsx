@@ -1,4 +1,5 @@
 import React from "react";
+import LazyImage from "./LazyImage";
 
 const ProductCard = ({ product, onClick }) => (
   <div
@@ -6,10 +7,11 @@ const ProductCard = ({ product, onClick }) => (
     onClick={() => onClick(product)}
   >
     <div className="relative overflow-hidden">
-      <img
+      <LazyImage
         src={product.image}
         alt={product.name}
-        className="w-full h-48 object-cover group-hover:scale-110 transition-transform duration-300"
+        className="w-full h-48 group-hover:scale-110 transition-transform duration-300"
+        placeholder="data:image/svg+xml,%3Csvg width='100' height='100' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='100%25' height='100%25' fill='%23374151'/%3E%3Ctext x='50%25' y='50%25' font-size='18' text-anchor='middle' dy='.3em' fill='%236B7280'%3ELoading...%3C/text%3E%3C/svg%3E"
       />
       <div className="absolute top-4 right-4">
         <span className="bg-gradient-to-r from-teal-500 to-cyan-600 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg backdrop-blur-sm">

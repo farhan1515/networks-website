@@ -1,33 +1,103 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 
 const NetworkAnimation = () => {
   const canvasRef = useRef(null);
+  const [isInView, setIsInView] = useState(false);
+  const [isVisible, setIsVisible] = useState(true);
+
+  // Visibility observer for performance optimization
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          setIsInView(entry.isIntersecting);
+        });
+      },
+      { threshold: 0.1 }
+    );
+
+    observer.observe(canvas);
+    return () => observer.disconnect();
+  }, []);
+
+  // Page visibility API for performance
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      setIsVisible(!document.hidden);
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () =>
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
+    if (!canvas || !isInView || !isVisible) return;
+
     const ctx = canvas.getContext("2d");
     let animationId;
+    let nodes = [];
 
     const resize = () => {
-      canvas.width = canvas.offsetWidth;
-      canvas.height = canvas.offsetHeight;
+      const rect = canvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+
+      // Set actual size in memory (scaled to account for extra pixel density)
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+
+      // Scale the drawing context so everything draws at the correct size
+      ctx.scale(dpr, dpr);
+
+      // Set display size
+      canvas.style.width = rect.width + "px";
+      canvas.style.height = rect.height + "px";
+
+      // Reinitialize nodes with proper dimensions
+      initializeNodes();
     };
 
-    const nodes = Array.from({ length: 50 }, () => ({
-      x: Math.random() * canvas.width,
-      y: Math.random() * canvas.height,
-      vx: (Math.random() - 0.5) * 0.5,
-      vy: (Math.random() - 0.5) * 0.5,
-      radius: Math.random() * 2 + 1,
-    }));
+    const initializeNodes = () => {
+      const width = canvas.width / (window.devicePixelRatio || 1);
+      const height = canvas.height / (window.devicePixelRatio || 1);
+
+      // Only initialize if we have valid dimensions
+      if (width > 0 && height > 0) {
+        nodes = Array.from({ length: 50 }, () => ({
+          x: Math.random() * width,
+          y: Math.random() * height,
+          vx: (Math.random() - 0.5) * 0.8,
+          vy: (Math.random() - 0.5) * 0.8,
+          radius: Math.random() * 2 + 1,
+        }));
+      }
+    };
 
     const animate = () => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      if (nodes.length === 0) return;
+
+      const width = canvas.width / (window.devicePixelRatio || 1);
+      const height = canvas.height / (window.devicePixelRatio || 1);
+
+      ctx.clearRect(0, 0, width, height);
+
       nodes.forEach((node) => {
         node.x += node.vx;
         node.y += node.vy;
-        if (node.x < 0 || node.x > canvas.width) node.vx *= -1;
-        if (node.y < 0 || node.y > canvas.height) node.vy *= -1;
+
+        // Bounce off edges with proper bounds
+        if (node.x < 0 || node.x > width) {
+          node.vx *= -1;
+          node.x = Math.max(0, Math.min(width, node.x));
+        }
+        if (node.y < 0 || node.y > height) {
+          node.vy *= -1;
+          node.y = Math.max(0, Math.min(height, node.y));
+        }
         // Add glow effect to nodes
         ctx.shadowColor = "rgba(6, 182, 212, 0.8)";
         ctx.shadowBlur = 15;
@@ -60,21 +130,45 @@ const NetworkAnimation = () => {
       animationId = requestAnimationFrame(animate);
     };
 
-    resize();
-    animate();
-    window.addEventListener("resize", resize);
+    // Initialize canvas and start animation
+    const init = () => {
+      resize();
+      // Use a small delay to ensure DOM is fully rendered
+      setTimeout(() => {
+        if (nodes.length === 0) {
+          initializeNodes();
+        }
+        animate();
+      }, 100);
+    };
+
+    // Handle resize events with debouncing
+    let resizeTimeout;
+    const debouncedResize = () => {
+      clearTimeout(resizeTimeout);
+      resizeTimeout = setTimeout(resize, 100);
+    };
+
+    init();
+    window.addEventListener("resize", debouncedResize);
 
     return () => {
-      window.removeEventListener("resize", resize);
+      window.removeEventListener("resize", debouncedResize);
       cancelAnimationFrame(animationId);
+      clearTimeout(resizeTimeout);
     };
-  }, []);
+  }, [isInView, isVisible]);
 
   return (
     <canvas
       ref={canvasRef}
-      className="absolute inset-0 w-full h-full opacity-80"
-      style={{ background: "transparent" }}
+      className="absolute inset-0 w-full h-full opacity-80 pointer-events-none"
+      style={{
+        background: "transparent",
+        display: "block",
+        minHeight: "100%",
+        minWidth: "100%",
+      }}
     />
   );
 };
